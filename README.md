@@ -34,3 +34,15 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## Project Status
+
+🚀 **Active Development** - This project is under active development and welcomes contributions.
+
+## Getting Involved
+
+- Check out our [Contributing Guidelines](./CONTRIBUTING.md)
+- Join the discussion in [GitHub Issues](../../issues)
+- Follow development updates
