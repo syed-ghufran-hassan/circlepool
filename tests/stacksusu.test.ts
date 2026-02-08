@@ -944,3 +944,132 @@ describe("StackSUSU Integration V5", () => {
     expect(circleInfo.result).toHaveClarityType(ClarityType.ResponseOk);
   });
 });
+
+describe("StackSUSU Escrow Deposit/Withdrawal V5", () => {
+  it("can deposit STX into escrow for a circle", async () => {
+    const accounts = simnet.getAccounts();
+    const deployer = accounts.get("deployer")!;
+    
+    // First create a circle
+    simnet.callPublicFn(
+      CORE_CONTRACT,
+      "create-circle",
+      [
+        Cl.stringAscii("Escrow Deposit Test"),
+        Cl.uint(1000000),
+        Cl.uint(5),
+        Cl.uint(3),
+        Cl.uint(MODE_UPFRONT),
+        Cl.uint(0),
+      ],
+      deployer
+    );
+    
+    const circleCount = simnet.callReadOnlyFn(CORE_CONTRACT, "get-circle-count", [], deployer);
+    const circleId = circleCount.result;
+    
+    // Get initial balance
+    const initialBalance = simnet.callReadOnlyFn(
+      ESCROW_CONTRACT,
+      "get-circle-balance",
+      [circleId],
+      deployer
+    );
+    expect(initialBalance.result).toStrictEqual(Cl.ok(Cl.uint(0)));
+    
+    // Deposit 1 STX
+    const depositAmount = Cl.uint(1000000);
+    const depositResult = simnet.callPublicFn(
+      ESCROW_CONTRACT,
+      "deposit",
+      [circleId, depositAmount],
+      deployer
+    );
+    
+    expect(depositResult.result).toHaveClarityType(ClarityType.ResponseOk);
+    
+    // Check updated balance
+    const updatedBalance = simnet.callReadOnlyFn(
+      ESCROW_CONTRACT,
+      "get-circle-balance",
+      [circleId],
+      deployer
+    );
+    expect(updatedBalance.result).toStrictEqual(Cl.ok(depositAmount));
+  });
+
+  it("rejects deposit with insufficient balance", async () => {
+    const accounts = simnet.getAccounts();
+    const deployer = accounts.get("deployer")!;
+    const wallet1 = accounts.get("wallet_1")!;
+    
+    // Create circle with wallet1
+    simnet.callPublicFn(
+      CORE_CONTRACT,
+      "create-circle",
+      [
+        Cl.stringAscii("Insuff Test"),
+        Cl.uint(1000000),
+        Cl.uint(5),
+        Cl.uint(3),
+        Cl.uint(MODE_UPFRONT),
+        Cl.uint(0),
+      ],
+      wallet1
+    );
+    
+    const circleCount = simnet.callReadOnlyFn(CORE_CONTRACT, "get-circle-count", [], deployer);
+    const circleId = circleCount.result;
+    
+    // Try to deposit more than wallet has (assuming wallet1 has minimal STX in simnet)
+    const depositResult = simnet.callPublicFn(
+      ESCROW_CONTRACT,
+      "deposit",
+      [circleId, Cl.uint(1000000000)], // 1000 STX - too much
+      wallet1
+    );
+    
+    expect(depositResult.result).toHaveClarityType(ClarityType.ResponseErr);
+  });
+
+  it("allows emergency withdrawal with fee", async () => {
+    const accounts = simnet.getAccounts();
+    const deployer = accounts.get("deployer")!;
+    
+    // Create circle and deposit
+    simnet.callPublicFn(
+      CORE_CONTRACT,
+      "create-circle",
+      [
+        Cl.stringAscii("Emergency Withdraw Test"),
+        Cl.uint(1000000),
+        Cl.uint(5),
+        Cl.uint(3),
+        Cl.uint(MODE_UPFRONT),
+        Cl.uint(0),
+      ],
+      deployer
+    );
+    
+    const circleCount = simnet.callReadOnlyFn(CORE_CONTRACT, "get-circle-count", [], deployer);
+    const circleId = circleCount.result;
+    
+    // Deposit first
+    simnet.callPublicFn(
+      ESCROW_CONTRACT,
+      "deposit",
+      [circleId, Cl.uint(1000000)],
+      deployer
+    );
+    
+    // Emergency withdraw half (should apply fee)
+    const withdrawResult = simnet.callPublicFn(
+      ESCROW_CONTRACT,
+      "emergency-withdraw",
+      [circleId, Cl.uint(500000)], // Withdraw 0.5 STX
+      deployer
+    );
+    
+    expect(withdrawResult.result).toHaveClarityType(ClarityType.ResponseOk);
+  });
+});
