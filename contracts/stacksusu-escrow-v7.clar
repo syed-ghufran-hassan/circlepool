@@ -2,6 +2,8 @@
 ;; Simplified escrow for holding circle funds
 
 (define-constant CONTRACT-OWNER tx-sender)
+(define-data-var total-circles uint u0)
+(define-data-var next-history-id uint u1)
 
 ;; Error constants
 (define-constant ERR-NOT-AUTHORIZED (err u3000))
@@ -14,6 +16,29 @@
 (define-private (get-min (a uint) (b uint))
   (if (<= a b) a b)
 )
+
+;; Track deposit/withdrawal history for audit trail
+(define-map deposit-history
+  { circle-id: uint, tx-id: uint }
+  {
+    member: principal,
+    amount: uint,
+    timestamp: uint,
+    block-height: uint
+  }
+)
+
+(define-map withdrawal-history
+  { circle-id: uint, tx-id: uint }
+  {
+    recipient: principal,
+    amount: uint,
+    timestamp: uint,
+    block-height: uint,
+    tx-type: (string-ascii 20) ;; "payout" or "emergency"
+  }
+)
+
 
 ;; Circle escrow balances
 (define-map circle-escrow
